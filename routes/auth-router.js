@@ -30,6 +30,7 @@ router.post('/login', (req, res) => {
 	AuthDB.findBy({ username })
 	.first()
 	.then(user => {
+		req.session.user = user;
 		if(bcrypt.compareSync(password, user.password) && user) {
 			res.status(200).json({ message: `logged in as ${user.username}.`})
 		} else {
@@ -51,8 +52,8 @@ router.get('/users', checkLogin, (req, res) => {
 	})
 });
 
-router.get('./logout', (req, res) => {
-	if(req.session.use) {
+router.get('/logout', (req, res) => {
+	if(req.session) {
 		req.session.destroy(err => {
 			if(err){
 				res.json({ message: 'something went wrong' })
@@ -86,7 +87,7 @@ function checkLogin(req, res, next) {
 	if(req.session && req.session.user) {
 		next();
 	} else {
-		res.status(401).json({ message: 'Invalid Credentials'})
+		res.status(401).json({ message: 'You need to be logged-in'})
 	}
 }
 

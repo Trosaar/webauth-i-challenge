@@ -39,7 +39,7 @@ server.use('/api/auth', AuthRouter);
 
 
 server.get('/', (req, res) => {
-	res.send('<h1>IT LIVES!!/h1>');
+	res.send('<h1>IT LIVES!!</h1>');
 });
 
 module.exports = server;
