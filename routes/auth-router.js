@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 
-const authDB = require('./auth-model.js');
+const AuthDB = require('./auth-model.js');
 
 const router = express.Router();
 
@@ -10,12 +10,13 @@ const router = express.Router();
 // | GET    | /api/users    | If the user is logged in, respond with an array of all the users contained in the database. If the user is not logged in repond with the correct status code and the message: 'You shall not pass!'.
 
 router.post('/register', (req, res) => {
-	const user = req.body
+	const user = req.body;
 
 	user.password = bcrypt.hashSync(user.password, 15)
 
-	authDB.add(user)
+	AuthDB.add(user)
 	.then(savedUser => {
+		req.session.user = user;
 		res.status(201).json(savedUser);
 	})
 	.catch(err => {
@@ -23,10 +24,10 @@ router.post('/register', (req, res) => {
 	});
 });
 
-router.post('/login', checkLogin, (req, res) => {
+router.post('/login', (req, res) => {
 	const {username, password} = req.body;
 
-	authDB.findBy({ username })
+	AuthDB.findBy({ username })
 	.first()
 	.then(user => {
 		if(bcrypt.compareSync(password, user.password) && user) {
@@ -40,8 +41,8 @@ router.post('/login', checkLogin, (req, res) => {
 	})
 })
 
-router.get('/users', (req, res) => {
-	authDB.find()
+router.get('/users', checkLogin, (req, res) => {
+	AuthDB.find()
 	.then(users => {
 		res.status(200).json(users)
 	})
@@ -50,24 +51,42 @@ router.get('/users', (req, res) => {
 	})
 });
 
-function checkLogin(req, res, next) {
-	const { username, password } = req.headers;
-
-	if(username && password) {
-		authDB.findBy({ username })
-		.first()
-		.then(user => {
-			if(bcrypt.compareSync(password, user.password) && user) {
-				next()
+router.get('./logout', (req, res) => {
+	if(req.session.use) {
+		req.session.destroy(err => {
+			if(err){
+				res.json({ message: 'something went wrong' })
 			} else {
-				res.status(401).json({ message: "invalid Credentials"})
+				res.end();
 			}
 		})
-		.catch(err => {
-			res.status(500).json({ message: "Invalid Credentials" })
-		})
+	}
+})
+
+function checkLogin(req, res, next) {
+	// const { username, password } = req.headers;
+
+	// if(username && password) {
+	// 	AuthDB.findBy({ username })
+	// 	.first()
+	// 	.then(user => {
+	// 		if(bcrypt.compareSync(password, user.password) && user) {
+	// 			next()
+	// 		} else {
+	// 			res.status(401).json({ message: "invalid Credentials"})
+	// 		}
+	// 	})
+	// 	.catch(err => {
+	// 		res.status(500).json({ message: "Invalid Credentials" })
+	// 	})
+	// } else {
+	// 	res.status(400).json({ message: 'please provide username and password'})
+	// }
+
+	if(req.session && req.session.user) {
+		next();
 	} else {
-		res.status(400).json({ message: 'please provide username and password'})
+		res.status(401).json({ message: 'Invalid Credentials'})
 	}
 }
 
